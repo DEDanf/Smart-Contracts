@@ -2070,6 +2070,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerable 
 contract bscCertificate is ERC721, Ownable {
     
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
     
     address private constant PancakeRouter=0x10ED43C718714eb63d5aA57B78B54704E256024E;
     IPancakeRouter02 private  _pancakeRouter;
@@ -2077,12 +2078,87 @@ contract bscCertificate is ERC721, Ownable {
     address private usdcTokenAddress = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
     IERC20 private usdcToken = IERC20(usdcTokenAddress);
     
-    constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {
-
-        _pancakeRouter = IPancakeRouter02(PancakeRouter);
+    address private busdTokenAddress = 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56;
+    IERC20 private busdToken = IERC20(busdTokenAddress);
+    
+    address private usdtTokenAddress =0x55d398326f99059fF775485246999027B3197955;
+    IERC20 private usdtToken = IERC20(busdTokenAddress);
+    
+    struct offsetInfo {
+        uint256 carbonAmount;
+        uint256 timestamp;
+        address walletAddress;
     }
     
+    offsetInfo[] Certificates;
     
+    constructor(string memory _name, string memory _symbol, string memory _baseURI) ERC721(_name, _symbol) {
+
+        _pancakeRouter = IPancakeRouter02(PancakeRouter);
+        _setBaseURI(_baseURI);
+    }
+    
+    function mintWithBnb(string memory _uri, uint256 _carbonAmount) external payable {
+        
+        address[] memory path = new address[](2);
+        path[0] = _pancakeRouter.WETH();
+        path[1] = busdTokenAddress;
+      
+        _pancakeRouter.swapExactETHForTokensSupportingFeeOnTransferTokens{value: msg.value}(
+            
+            _carbonAmount*11*10^18,
+            path,
+            address(this),
+            block.timestamp+5
+        );
+          
+        uint256 indexID = totalSupply();
+        _safeMint(msg.sender, indexID);
+        _setTokenURI(indexID, _uri);
+        Certificates.push(offsetInfo(_carbonAmount,block.timestamp,msg.sender));
+
+    }
+
+    function mintWithUsdc(string memory _uri, uint256 _carbonAmount) external {
+      
+        usdcToken.transferFrom(msg.sender, address(this), _carbonAmount*11*10^18);
+        uint256 indexID = totalSupply();
+        _safeMint(msg.sender, indexID);
+        _setTokenURI(indexID, _uri);
+        Certificates.push(offsetInfo(_carbonAmount,block.timestamp,msg.sender));
+
+    }
+    
+    function mintWithBusd(string memory _uri, uint256 _carbonAmount) external {
+      
+        busdToken.transferFrom(msg.sender, address(this), _carbonAmount*11*10^18);
+        uint256 indexID = totalSupply();
+        _safeMint(msg.sender, indexID);
+        _setTokenURI(indexID, _uri);
+        Certificates.push(offsetInfo(_carbonAmount,block.timestamp,msg.sender));
+
+    }
+    
+    function mintWithUsdt(string memory _uri, uint256 _carbonAmount) external {
+      
+        usdtToken.transferFrom(msg.sender, address(this), _carbonAmount*11*10^18);
+        uint256 indexID = totalSupply();
+        _safeMint(msg.sender, indexID);
+        _setTokenURI(indexID, _uri);
+        Certificates.push(offsetInfo(_carbonAmount,block.timestamp,msg.sender));
+
+    }
+    
+    function viewInfo(uint256 nftIndex) external view returns(uint256, uint256, address) {
+        return(Certificates[nftIndex].carbonAmount, Certificates[nftIndex].timestamp, Certificates[nftIndex].walletAddress);
+    }
+    
+    function withdrawCrypto() onlyOwner external {
+        usdcToken.safeTransfer(msg.sender, usdcToken.balanceOf(address(this)));
+        busdToken.safeTransfer(msg.sender, busdToken.balanceOf(address(this)));
+        usdtToken.safeTransfer(msg.sender, usdtToken.balanceOf(address(this)));
+        
+    }
     
     
 }
