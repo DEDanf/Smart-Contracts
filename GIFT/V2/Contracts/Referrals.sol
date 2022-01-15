@@ -1,4 +1,15 @@
-contract Referrals is IReferralHandler, ReentrancyGuard {
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
+
+import "GIFT/V2/Interfaces/IReferrals.sol";
+import "GIFT/Dependencies/Abstracts/ReentrancyGuard.sol";
+import "GIFT/Dependencies/Libraries/SafeMath.sol";
+
+contract Referrals is IReferrals, ReentrancyGuard {
+
+    using SafeMath for uint256;
     
     struct referrer {
 
@@ -20,9 +31,7 @@ contract Referrals is IReferralHandler, ReentrancyGuard {
         UIDToReferrer[1] = referrer(0, 0, 0, 0);
     }
     
-    function payReferrer(uint256 _UID, uint256 _payment) external payable override returns(uint256){
-        
-        require(msg.value == _payment, "INCORRECT PAYMENT");
+    function payReferrerAndRegister(uint256 _UID) external payable override returns(uint256){
 
         if(customerToReferrerUID[msg.sender]==0) {
 
@@ -35,7 +44,7 @@ contract Referrals is IReferralHandler, ReentrancyGuard {
         }
         
         UIDToReferrer[customerToReferrerUID[msg.sender]].referralSales++;
-        UIDToReferrer[customerToReferrerUID[msg.sender]].balance = UIDToReferrer[customerToReferrerUID[msg.sender]].balance + _payment;
+        UIDToReferrer[customerToReferrerUID[msg.sender]].balance = UIDToReferrer[customerToReferrerUID[msg.sender]].balance + msg.value;
 
         if (refaddyToUID[msg.sender] == 0) {
 
@@ -46,6 +55,24 @@ contract Referrals is IReferralHandler, ReentrancyGuard {
             return(refaddyToUID[msg.sender]);
         }
     }
+
+    function payReferrer(uint256 _UID) external payable override {
+
+        if(customerToReferrerUID[msg.sender]==0) {
+
+            if(_UID == 0 || _UID >= currentID) {
+                customerToReferrerUID[msg.sender] = 1;
+            } else {
+                customerToReferrerUID[msg.sender] = _UID;
+            }
+            UIDToReferrer[customerToReferrerUID[msg.sender]].referrals++;
+        }
+        
+        UIDToReferrer[customerToReferrerUID[msg.sender]].referralSales++;
+        UIDToReferrer[customerToReferrerUID[msg.sender]].balance = UIDToReferrer[customerToReferrerUID[msg.sender]].balance + msg.value;
+    }    
+
+
     
     function registerReferrer() public returns (uint256) {
         
